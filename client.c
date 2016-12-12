@@ -27,6 +27,8 @@ void get_interfaces(int fdSock, struct Interface **pInterface)
         strncpy(pTmp->name, (block.stSentence[i]->szSentence[2]) + 6, tmp_len);//skip "=name=" and copy interfase name
         *(pTmp->name + tmp_len) = '\0';
     }
+    clearSentence(&sentence);
+    clearBlock(&block);
 }
 
 void show_interface(struct Interface *pInterface)
@@ -72,10 +74,10 @@ void get_stat(int fdSock, struct Interface *pInterface, int count, int frequency
         writeSentence(fdSock, &sentence);
         block = readBlock(fdSock);
         if(!*pStat)
-            pTmp = *pStat = calloc(sizeof(struct Stat), 1);
+            pTmp = *pStat = calloc(1, sizeof(struct Stat));
         else
         {
-            pTmp->pNext = calloc(sizeof(struct Stat), 1);
+            pTmp->pNext = calloc(1, sizeof(struct Stat));            
             pTmp = pTmp->pNext;
         }
         memset(tmpBuf, '\0', sizeof(tmpBuf));
@@ -100,10 +102,12 @@ void get_stat(int fdSock, struct Interface *pInterface, int count, int frequency
         numPos = strrchr(block.stSentence[0]->szSentence[8], '=');
         pTmp->t_drops_per_sec = atoi(++numPos);
         memset(tmpBuf, '\0', sizeof(tmpBuf));
-        numPos = strrchr(block.stSentence[0]->szSentence[3], '=');
+        numPos = strrchr(block.stSentence[0]->szSentence[9], '=');
         pTmp->t_errors_per_sec = atoi(++numPos);
-        sleep(frequency);
+        usleep(frequency);
+        clearBlock(&block);
     }
+    clearSentence(&sentence);
 }
 
 void free_interfase_list(struct Interface *pInterfase)
@@ -132,21 +136,53 @@ void show_stat(int index, struct Stat *pStat, struct Interface *pInterface)
     switch (index) {
     case 0://recived packets per seconds
     {
-        printf("\nStats for resived packets per sekonds (%s):", pInterface->name);
+        printf("\nStats for received packets per seconds (%s):", pInterface->name);
         int count = 1, i, maxVal = max_stat_val(index, pStat);
         while (pStat)
         {
             printf("\n%3d: ", count++);
             for(i = 0; i < maxVal; i++)
                 printf("%s", pStat->r_packets_per_sec > i ? "*" : " ");
-            printf(" (value: %d)", pStat->r_packets_per_sec);
-            pStat = pStat->pNext;
+           pStat = pStat->pNext;
         }
         break;
     }
     default:
         break;
     }
+}
+
+void show_average_stat(int index, struct Stat *pStat, struct Interface *pInterface)
+{
+    struct winsize w;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+    int widht = w.ws_col - 30;
+    switch (index) {
+    case 0://recived packets per seconds
+    {
+        printf("\n%-15s[", pInterface->name);
+        int count = 1, i, total = 0;
+        float average;
+        while (pStat)
+        {
+            total += pStat->r_packets_per_sec;
+            count++;
+            pStat = pStat->pNext;
+        }
+        average = (float)total/count;
+        for(i = 0; i < widht; i++)
+        {
+            printf(KGRN"%s", i < (int)average? "*" : " ");
+        }
+        printf(KNRM " (%4d)]", (int)average);
+        break;
+    }
+
+
+    default:
+        break;
+    }
+
 }
 
 int max_stat_val(int index, struct Stat *pStat)

@@ -47,7 +47,6 @@
 #include "mikrotik_api.h"
 
 
-
 /********************************************************************
  * Connect to API
  * Returns a socket descriptor
@@ -171,7 +170,11 @@ int login(int fdSock, char *username, char *password)
 
     DEBUG ? printSentence(&stWriteSentence) : 0;
     writeSentence(fdSock, &stWriteSentence);
-
+//changed
+    clearSentence(&stWriteSentence);
+    free(szMD5ChallengeBinary);
+    free(szMD5PasswordToSend);
+//
 
     stReadSentence = readSentence(fdSock);
     DEBUG ? printSentence (&stReadSentence) : 0;
@@ -198,7 +201,7 @@ void writeLen(int fdSock, int iLen)
     char *cEncodedLength;  // encoded length to send to the api socket
     char *cLength;         // exactly what is in memory at &iLen integer
 
-    cLength = calloc(sizeof(int), 1);
+    //cLength = calloc(sizeof(int), 1);//??
     cEncodedLength = calloc(sizeof(int), 1);
 
     // set cLength address to be same as iLen
@@ -211,6 +214,11 @@ void writeLen(int fdSock, int iLen)
     {
         cEncodedLength[0] = (char)iLen;
         write (fdSock, cEncodedLength, 1);
+
+        //changed
+        free(cEncodedLength);
+        //free(cLength);
+        //
     }
 
     // write 2 bytes
@@ -230,6 +238,11 @@ void writeLen(int fdSock, int iLen)
         }
 
         write (fdSock, cEncodedLength, 2);
+
+        //changed
+        free(cEncodedLength);
+        //free(cLength);
+        //
     }
 
     // write 3 bytes
@@ -251,6 +264,11 @@ void writeLen(int fdSock, int iLen)
         }
 
         write (fdSock, cEncodedLength, 3);
+
+        //changed
+        free(cEncodedLength);
+        //free(cLength);
+        //
     }
 
     // write 4 bytes
@@ -275,11 +293,21 @@ void writeLen(int fdSock, int iLen)
         }
 
         write (fdSock, cEncodedLength, 4);
+
+        //changed
+        free(cEncodedLength);
+        //free(cLength);
+        //
     }
     else  // this should never happen
     {
         printf("length of word is %d\n", iLen);
         printf("word is too long.\n");
+
+        //changed
+        free(cEncodedLength);
+        //free(cLength);
+        //
         exit(1);
     }
 }
@@ -424,7 +452,11 @@ int readLen(int fdSock)
         *iLen = (int)cFirstChar;
     }
 
-    return *iLen;
+    int rez = *iLen;//changed
+    free(iLen);//
+    free(cLength);//
+
+    return rez;//*iLen;
 }
 
 
@@ -522,6 +554,8 @@ struct Sentence readSentence(int fdSock)
             stReturnSentence.iReturnValue = FATAL;
         }
 
+        free(szWord);
+
     }
 
     // if any errors, get the next sentence
@@ -552,6 +586,7 @@ struct Block readBlock(int fdSock)
     struct Sentence stSentence;
     struct Block stBlock;
     initializeBlock(&stBlock);
+    int retVal;//
 
     DEBUG ? printf("readBlock\n") : 0;
 
@@ -563,8 +598,12 @@ struct Block readBlock(int fdSock)
         addSentenceToBlock(&stBlock, &stSentence);
         DEBUG ? printf("addSentenceToBlock succeeded\n") : 0;
 
-    } while (stSentence.iReturnValue == 0);
+        //changed
+        retVal = stSentence.iReturnValue;
+        //clearSentence(&stSentence);//
+        //
 
+    } while (/*stSentence.iReturnValue == 0*/!retVal);
 
     DEBUG ? printf("readBlock completed successfully\n") : 0;
 
@@ -592,7 +631,14 @@ void initializeBlock(struct Block *stBlock)
 void clearBlock(struct Block *stBlock)
 {
     DEBUG ? printf("clearBlock\n") : 0;
-
+    //changed
+    for (int i = 0; i < stBlock->iLength; i++)
+    {
+     //   free(stBlock->stSentence[stBlock->iLength]);
+        clearSentence(stBlock->stSentence[i]);
+        free(stBlock->stSentence[i]);
+    }
+    //
     free(stBlock->stSentence);
     initializeBlock(stBlock);
 }
@@ -636,12 +682,12 @@ void addSentenceToBlock(struct Block *stBlock, struct Sentence *stSentence)
     }
     else
     {
-        stBlock->stSentence = realloc(stBlock->stSentence, iNewLength * sizeof stBlock->stSentence + 1);
+        stBlock->stSentence = realloc(stBlock->stSentence, iNewLength * sizeof stBlock->stSentence /*+ 1*/);
     }
 
 
     // allocate mem for the full sentence struct
-    stBlock->stSentence[stBlock->iLength] = malloc(sizeof *stSentence);
+    stBlock->stSentence[stBlock->iLength] = malloc(sizeof(struct Sentence));
 
     // copy actual sentence struct to the block position
     memcpy(stBlock->stSentence[stBlock->iLength], stSentence, sizeof *stSentence);
@@ -674,6 +720,12 @@ void clearSentence(struct Sentence *stSentence)
 {
     DEBUG ? printf("initializeSentence\n") : 0;
 
+
+    //changed
+    while (stSentence->iLength--) {
+        free(stSentence->szSentence[stSentence->iLength]);
+    }
+    //
     free(stSentence->szSentence);
     initializeSentence(stSentence);
 }

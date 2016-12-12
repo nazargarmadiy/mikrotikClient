@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
 {
     // declare variables
     int fdSock;
-    char *szIPaddr = "172.20.17.200";
+    char *szIPaddr;// = "172.20.17.200";
     char *szPort = "8728"; // default port string
     int iPort = 8728;             // default port int
     char *szUsername = "admin";  // default username
@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
     struct Block stBlock;
 
     // check number of args.  if not correct, call usage and exit
-    /*if (argc < 2)
+    if (argc < 2)
     {
         usage();
         exit(0);
@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
 
         // convert port string to an int
         iPort = atoi(szPort);
-    }*/
+    }
 
     iInteractiveMode ? printf("Connecting to API: %s:%d\n", szIPaddr, iPort) : 0;
     fdSock = apiConnect(szIPaddr, iPort);
@@ -99,23 +99,30 @@ int main(int argc, char *argv[])
     // initialize first sentence
     initializeSentence(&stSentence);
 
-    ///////
-    struct Interface *pIinterfase = NULL;
-    get_interfaces(fdSock, &pIinterfase);
-    show_interface(pIinterfase);
-    struct Interface *pCurrenrInt = choose_intreface(pIinterfase);
-    struct Stat *pStat = NULL;
-    get_stat(fdSock, pIinterfase, 10, 1, &pStat);
 
-    show_stat(0, pStat, pIinterfase);
+    //
+    struct Interface *pIinterfase = NULL;
+    struct Stat *pStat = NULL;
+    get_interfaces(fdSock, &pIinterfase);
+    struct Interface *pTempInt = pIinterfase;
+
+    printf("\nRecieved packets per second:");
+    while (pTempInt)
+    {
+        pStat = NULL;
+        get_stat(fdSock, pTempInt, 2, 500000, &pStat);
+        //show_stat(0, pStat, pTempInt);
+        show_average_stat(0, pStat, pTempInt);
+        free_stat_list(pStat);
+        pTempInt = pTempInt->pNext;
+    }
 
     free_interfase_list(pIinterfase);
-    free_stat_list(pStat);
-
     apiDisconnect(fdSock);
     printf("\n");
     exit(0);
-    //////*/
+    //
+
 
     // main loop
     while (1)
@@ -154,6 +161,9 @@ int main(int argc, char *argv[])
 
                 // clear the sentence
                 clearSentence(&stSentence);
+                //
+                clearBlock(&stBlock);
+                //
             }
         }
 
@@ -163,7 +173,7 @@ int main(int argc, char *argv[])
             addWordToSentence(&stSentence, cWordInput);
         }
     }
-
+    clearSentence(&stSentence);//
     apiDisconnect(fdSock);
     exit(0);
 }
