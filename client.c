@@ -60,11 +60,11 @@ void get_stat(int fdSock, struct Interface *pInterface, int count, int frequency
     initializeSentence(&sentence);
     addWordToSentence(&sentence, "/interface/monitor-traffic");//TODO:make define or config file!
     addWordToSentence(&sentence, "=once=");
-    int len = strlen(pInterface->name) + 11;//lenght name + lenght "=interface=" + '\0'
+    int len = strlen(pInterface->name) + 12;//lenght name + lenght "=interface=" + '\0'
     char interfaceName[len];
     memset(interfaceName, '\0', sizeof(interfaceName));
     strcpy(interfaceName, "=interface=");
-    strcat(interfaceName, pInterface->name);
+    strcat(interfaceName, pInterface->name);//check pStat!!!
     addWordToSentence(&sentence, interfaceName);
     addWordToSentence(&sentence, "");
     struct Stat *pTmp;
@@ -74,7 +74,7 @@ void get_stat(int fdSock, struct Interface *pInterface, int count, int frequency
         writeSentence(fdSock, &sentence);
         block = readBlock(fdSock);
         if(!*pStat)
-            pTmp = *pStat = calloc(1, sizeof(struct Stat));
+            *pStat = pTmp = calloc(1, sizeof(struct Stat));
         else
         {
             pTmp->pNext = calloc(1, sizeof(struct Stat));            
